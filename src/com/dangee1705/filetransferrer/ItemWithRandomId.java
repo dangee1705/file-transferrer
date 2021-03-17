@@ -25,7 +25,15 @@ public class ItemWithRandomId<T> {
 	}
 
 	@Override
+	@SuppressWarnings("unchecked")
 	public boolean equals(Object obj) {
-		return (obj instanceof ItemWithRandomId) && ((ItemWithRandomId<T>) obj).getId() == id;
+		if(obj instanceof ItemWithRandomId<?>)
+			return ((ItemWithRandomId<T>) obj).getId() == id;
+		return false;
+	}
+
+	@Override
+	public String toString() {
+		return item.toString();
 	}
 }

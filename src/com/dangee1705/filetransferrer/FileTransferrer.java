@@ -29,6 +29,7 @@ public class FileTransferrer {
 	private Server server;
 	private Client client;
 
+	private JButton removeFileButton;
 	private JButton downloadButton;
 
 	public FileTransferrer() {
@@ -68,19 +69,26 @@ public class FileTransferrer {
 
 		JScrollPane fileListScrollPane = new JScrollPane();
 		JList<File> fileList = new JList<>(defaultListModel);
-		fileList.addListSelectionListener(event -> {
-			System.out.println("selection changed");
-		});
+		fileList.addListSelectionListener(event -> removeFileButton.setEnabled(fileList.getSelectedIndices().length > 0));
 		fileListScrollPane.setViewportView(fileList);
 		serverPanel.add(fileListScrollPane, BorderLayout.CENTER);
+
+		removeFileButton = new JButton("Remove File");
+		removeFileButton.setEnabled(false);
+		removeFileButton.addActionListener(event -> {
+			for(File file : fileList.getSelectedValuesList())
+				defaultListModel.removeElement(file);
+			// TODO: send remove message to clients
+		});
+		serverPanel.add(removeFileButton, BorderLayout.PAGE_END);
 
 		// client side
 		JPanel clientPanel = new JPanel(new BorderLayout());
 		wrapperPanel.add(clientPanel);
 
 		JScrollPane clientFileListScrollPane = new JScrollPane();
-		DefaultListModel<String> clientFileListModel = new DefaultListModel<>();
-		JList<String> clientFileList = new JList<>(clientFileListModel);
+		DefaultListModel<AvailableDownload> clientFileListModel = new DefaultListModel<>();
+		JList<AvailableDownload> clientFileList = new JList<>(clientFileListModel);
 		clientFileList.setSelectionMode(ListSelectionModel.MULTIPLE_INTERVAL_SELECTION);
 		clientFileList.addListSelectionListener(event -> downloadButton.setEnabled(clientFileList.getSelectedIndices().length > 0));
 		clientFileListScrollPane.setViewportView(clientFileList);
@@ -88,6 +96,10 @@ public class FileTransferrer {
 
 		downloadButton = new JButton("Download file");
 		downloadButton.setEnabled(false);
+		downloadButton.addActionListener(event -> {
+			for(AvailableDownload download : clientFileList.getSelectedValuesList())
+				client.download(download.getId());
+		});
 		clientPanel.add(downloadButton, BorderLayout.PAGE_END);
 		
 		window.add(wrapperPanel, BorderLayout.CENTER);
@@ -97,18 +109,9 @@ public class FileTransferrer {
 
 		client.addOnFileAddedListener(() -> {
 			clientFileListModel.clear();
-			for(ItemWithRandomId<String> item : client.getAvailableDownloads())
-				clientFileListModel.addElement(item.getItem());
+			for(AvailableDownload download : client.getAvailableDownloads())
+				clientFileListModel.addElement(download);
 		});
-	}
-
-	private int listFiles(File root) {
-		System.out.println(root.getAbsolutePath() + " " + (root.isDirectory() ? ("D " + root.listFiles().length) : ("F "  + root.length())));
-		int total = 1;
-		if(root.isDirectory())
-			for(File file : root.listFiles())
-				total += listFiles(file);
-		return total;
 	}
 
 	private long calculateSize(File root) {

@@ -3,6 +3,7 @@ package com.dangee1705.filetransferrer;
 import java.io.DataInputStream;
 import java.io.DataOutputStream;
 import java.io.File;
+import java.io.FileInputStream;
 import java.io.IOException;
 import java.net.InetSocketAddress;
 import java.net.ServerSocket;
@@ -34,7 +35,9 @@ public class Server implements Runnable {
 				cleanup();
 				return;
 			}
-			
+
+			Thread thread = new Thread(this);
+			thread.start();
 		}
 
 		private void cleanup() {
@@ -46,7 +49,27 @@ public class Server implements Runnable {
 			while(true) {
 				try {
 					int messageType = dataInputStream.readInt();
-					System.out.println(messageType);
+					if(messageType == 0) {
+						long fileId = dataInputStream.readLong();
+
+						synchronized(dataOutputStream) {
+							dataOutputStream.writeInt(2);
+							dataOutputStream.writeLong(fileId);
+							ItemWithRandomId<File> fileWithRandomId = null;
+							for(ItemWithRandomId<File> item : fileWithRandomIds) {
+								if(item.getId() == fileId) {
+									fileWithRandomId = item;
+									break;
+								}
+							}
+							if(fileWithRandomId == null) {
+								dataOutputStream.writeBoolean(false);
+							} else {
+								dataOutputStream.writeBoolean(true);
+								sendFile(fileWithRandomId.getItem(), fileWithRandomId.getItem());
+							}
+						}
+					}
 				} catch(IOException e) {
 					break;
 				}
@@ -54,16 +77,42 @@ public class Server implements Runnable {
 			cleanup();
 		}
 
+		private void sendString(String string) throws IOException {
+			byte[] stringBytes = string.getBytes();
+			dataOutputStream.writeInt(stringBytes.length);
+			dataOutputStream.write(stringBytes);
+		}
+
 		public void sendFileList() throws IOException {
 			dataOutputStream.writeInt(0);
 			dataOutputStream.writeInt(fileWithRandomIds.size());
 			for(ItemWithRandomId<File> fileWithRandomId : fileWithRandomIds) {
 				dataOutputStream.writeLong(fileWithRandomId.getId());
-				byte[] nameBytes = fileWithRandomId.getItem().getName().getBytes();
-				dataOutputStream.writeInt(nameBytes.length);
-				dataOutputStream.write(nameBytes);
+				sendString(fileWithRandomId.getItem().getName());
 			}
 			dataOutputStream.flush();
+		}
+
+		private void sendFile(File root, File file) throws IOException {
+			if(file.getAbsolutePath().startsWith(root.getAbsolutePath())) {
+				String name = file.getAbsolutePath().substring(root.getAbsolutePath().length() - root.getName().length());
+				sendString(name);
+				dataOutputStream.writeBoolean(file.isDirectory());
+				if(file.isDirectory()) {
+					dataOutputStream.writeInt(file.listFiles().length);
+					for(File subfile : file.listFiles()) {
+						sendFile(root, subfile);
+					}
+				} else {
+					dataOutputStream.writeLong(file.length());
+					FileInputStream fileInputStream = new FileInputStream(file);
+					int b;
+					while((b = fileInputStream.read()) != -1) {
+						dataOutputStream.writeByte(b);
+					}
+					fileInputStream.close();
+				}
+			}
 		}
 	}
 

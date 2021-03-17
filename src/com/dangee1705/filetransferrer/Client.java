@@ -1,7 +1,12 @@
 package com.dangee1705.filetransferrer;
 
 import java.io.DataInputStream;
+import java.io.DataOutputStream;
+import java.io.File;
+import java.io.FileOutputStream;
+import java.io.IOException;
 import java.net.InetAddress;
+import java.net.InetSocketAddress;
 import java.net.InterfaceAddress;
 import java.net.NetworkInterface;
 import java.net.Socket;
@@ -10,7 +15,7 @@ import java.util.Enumeration;
 
 public class Client {
 	private ArrayList<ServerHandler> serverHandlers;
-	private ArrayList<ItemWithRandomId<String>> availableDownloads = new ArrayList<>();
+	private ArrayList<AvailableDownload> availableDownloads = new ArrayList<>();
 
 	public Client() {
 		serverHandlers = new ArrayList<>();
@@ -32,6 +37,7 @@ public class Client {
 					}
 				}
 			}
+			// serverHandlers.add(new ServerHandler(InetAddress.getByName("localhost"))); // TODO: remove this
 		} catch(Exception e) {
 			e.printStackTrace();
 		}
@@ -40,6 +46,8 @@ public class Client {
 	public class ServerHandler implements Runnable {
 		private InetAddress inetAddress;
 		private Thread thread;
+		private DataInputStream dataInputStream;
+		private DataOutputStream dataOutputStream;
 
 		public ServerHandler(InetAddress inetAddress) {
 			this.inetAddress = inetAddress;
@@ -47,11 +55,37 @@ public class Client {
 			thread.start();
 		}
 
+		private String readString() throws IOException {
+			int length = dataInputStream.readInt();
+			byte[] bytes = dataInputStream.readNBytes(length);
+			return new String(bytes);
+		}
+
+		private void readFile() throws IOException {
+			String name = readString();
+			boolean isDirectory = dataInputStream.readBoolean();
+			File file = new File(System.getProperty("user.home") + "/Downloads/" + name);
+			if(isDirectory) {
+				file.mkdirs();
+				int fileCount = dataInputStream.readInt();
+				for(int i = 0; i < fileCount; i++)
+					readFile();
+			} else {
+				long fileLength = dataInputStream.readLong();
+				FileOutputStream fileOutputStream = new FileOutputStream(file);
+				for(long i = 0; i < fileLength; i++) {
+					fileOutputStream.write(dataInputStream.readByte());
+				}
+				fileOutputStream.close();
+			}
+		}
+
 		@Override
 		public void run() {
 			try {
 				Socket socket = new Socket(inetAddress, FileTransferrer.PORT);
-				DataInputStream dataInputStream = new DataInputStream(socket.getInputStream());
+				dataInputStream = new DataInputStream(socket.getInputStream());
+				dataOutputStream = new DataOutputStream(socket.getOutputStream());
 
 				while(true) {
 					int messageType = dataInputStream.readInt();
@@ -59,11 +93,9 @@ public class Client {
 						int numFiles = dataInputStream.readInt();
 						for(int i = 0; i < numFiles; i++) {
 							long fileId = dataInputStream.readLong();
-							int nameBytesLength = dataInputStream.readInt();
-							byte[] nameBytes = dataInputStream.readNBytes(nameBytesLength);
-							String name = new String(nameBytes);
+							String name = readString();
 							synchronized(availableDownloads) {
-								ItemWithRandomId<String> download = new ItemWithRandomId<String>(inetAddress.getHostAddress() + " > " + name, fileId);
+								AvailableDownload download = new AvailableDownload(this, name, fileId);
 								if(!availableDownloads.contains(download))
 									availableDownloads.add(download);
 							}
@@ -71,9 +103,14 @@ public class Client {
 
 						for(Listener listener : onFileAddedListeners)
 							listener.on();
+					} else if(messageType == 2) {
+						long fileId = dataInputStream.readLong();
+						boolean isAvailable = dataInputStream.readBoolean();
+						if(isAvailable) {
+							readFile();
+						}
 					}
 				}
-
 
 				// socket.close();
 			} catch (Exception e) {
@@ -87,6 +124,16 @@ public class Client {
 				serverHandlers.remove(this);
 			}
 		}
+
+		public InetAddress getInetAddress() {
+			return inetAddress;
+		}
+
+		public void download(long id) throws IOException {
+			dataOutputStream.writeInt(0);
+			dataOutputStream.writeLong(id);
+			dataOutputStream.flush();
+		}
 	}
 
 	ArrayList<Listener> onFileAddedListeners = new ArrayList<>();
@@ -95,7 +142,22 @@ public class Client {
 		onFileAddedListeners.add(listener);
 	}
 
-	public ArrayList<ItemWithRandomId<String>> getAvailableDownloads() {
+	public ArrayList<AvailableDownload> getAvailableDownloads() {
 		return availableDownloads;
 	}
+
+	public void download(long id) {
+		for(AvailableDownload download : getAvailableDownloads()) {
+			if(download.getId() == id) {
+				try {
+					download.getServerHandler().download(download.getId());
+				} catch (IOException e) {
+					// TODO: handle this error
+				}
+			}
+		}
+	}
+
+	// onDownloadUnavailable
+	// onDownloadCompleted
 }
