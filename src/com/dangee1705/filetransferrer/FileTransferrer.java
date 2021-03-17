@@ -1,6 +1,7 @@
 package com.dangee1705.filetransferrer;
 
 import java.awt.BorderLayout;
+import java.awt.GridLayout;
 import java.io.File;
 import java.util.ArrayList;
 
@@ -9,7 +10,9 @@ import javax.swing.JButton;
 import javax.swing.JFileChooser;
 import javax.swing.JFrame;
 import javax.swing.JList;
+import javax.swing.JPanel;
 import javax.swing.JScrollPane;
+import javax.swing.ListSelectionModel;
 
 // look for other servers on network
 // download file list
@@ -26,12 +29,19 @@ public class FileTransferrer {
 	private Server server;
 	private Client client;
 
+	private JButton downloadButton;
+
 	public FileTransferrer() {
 		server = new Server();
 		client = new Client();
 
 		JFrame window = new JFrame("File Transferrer");
-		window.setSize(400, 400);
+		window.setSize(600, 600);
+
+		JPanel wrapperPanel = new JPanel();
+		wrapperPanel.setLayout(new GridLayout(1, 2));
+		JPanel serverPanel = new JPanel(new BorderLayout());
+		wrapperPanel.add(serverPanel);
 
 		// server side
 		ArrayList<File> files = new ArrayList<>();
@@ -54,7 +64,7 @@ public class FileTransferrer {
 				}
 			}
 		});
-		window.add(addFilesButton, BorderLayout.PAGE_START);
+		serverPanel.add(addFilesButton, BorderLayout.PAGE_START);
 
 		JScrollPane fileListScrollPane = new JScrollPane();
 		JList<File> fileList = new JList<>(defaultListModel);
@@ -62,27 +72,34 @@ public class FileTransferrer {
 			System.out.println("selection changed");
 		});
 		fileListScrollPane.setViewportView(fileList);
-		window.add(fileListScrollPane, BorderLayout.LINE_START);
+		serverPanel.add(fileListScrollPane, BorderLayout.CENTER);
 
 		// client side
+		JPanel clientPanel = new JPanel(new BorderLayout());
+		wrapperPanel.add(clientPanel);
+
 		JScrollPane clientFileListScrollPane = new JScrollPane();
 		DefaultListModel<String> clientFileListModel = new DefaultListModel<>();
 		JList<String> clientFileList = new JList<>(clientFileListModel);
-		clientFileList.addListSelectionListener(event -> {
-			System.out.println("selection changed");
-		});
+		clientFileList.setSelectionMode(ListSelectionModel.MULTIPLE_INTERVAL_SELECTION);
+		clientFileList.addListSelectionListener(event -> downloadButton.setEnabled(clientFileList.getSelectedIndices().length > 0));
 		clientFileListScrollPane.setViewportView(clientFileList);
-		window.add(clientFileListScrollPane, BorderLayout.LINE_END);
+		clientPanel.add(clientFileListScrollPane, BorderLayout.CENTER);
+
+		downloadButton = new JButton("Download file");
+		downloadButton.setEnabled(false);
+		clientPanel.add(downloadButton, BorderLayout.PAGE_END);
+		
+		window.add(wrapperPanel, BorderLayout.CENTER);
+		window.setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE);
+		window.setLocationRelativeTo(null);
+		window.setVisible(true);
+
 		client.addOnFileAddedListener(() -> {
 			clientFileListModel.clear();
 			for(ItemWithRandomId<String> item : client.getAvailableDownloads())
 				clientFileListModel.addElement(item.getItem());
 		});
-		
-		window.setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE);
-		window.setVisible(true);
-
-		
 	}
 
 	private int listFiles(File root) {
