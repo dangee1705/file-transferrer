@@ -15,6 +15,16 @@ import java.util.Enumeration;
 public class Client {
 	private ArrayList<ServerHandler> serverHandlers = new ArrayList<>();
 	private ArrayList<AvailableDownload> availableDownloads = new ArrayList<>();
+	private ArrayList<Listener> onConnectedToServerListeners = new ArrayList<>();
+	private ArrayList<Listener> onDisconnectedFromServerListeners = new ArrayList<>();
+
+	public void addOnConnectedToServerListener(Listener listener) {
+		onConnectedToServerListeners.add(listener);
+	}
+
+	public void addOnDisconnectedFromServerListener(Listener listener) {
+		onDisconnectedFromServerListeners.add(listener);
+	}
 
 	public void connectTo(InetAddress inetAddress) {
 		synchronized(serverHandlers) {
@@ -91,7 +101,6 @@ public class Client {
 		@Override
 		public void run() {
 			Socket socket;
-
 			try {
 				socket = new Socket(inetAddress, FileTransferrer.PORT);
 				dataInputStream = new DataInputStream(socket.getInputStream());
@@ -100,6 +109,8 @@ public class Client {
 				cleanup();
 				return;
 			}
+
+			onConnectedToServerListeners.forEach(listener -> listener.on());
 
 			try {
 				while(true) {
@@ -136,7 +147,18 @@ public class Client {
 				
 			}
 
+			ArrayList<AvailableDownload> noLongerAvailable = new ArrayList<>();
+			for(AvailableDownload availableDownload : availableDownloads)
+				if(availableDownload.getServerHandler() == this)
+					noLongerAvailable.add(availableDownload);
+			for(AvailableDownload noLongerAvailableDownload : noLongerAvailable)
+				availableDownloads.remove(noLongerAvailableDownload);
+
+			onFileAddedListeners.forEach(listener -> listener.on());
+
 			cleanup();
+
+			onDisconnectedFromServerListeners.forEach(listener -> listener.on());
 		}
 
 		public void cleanup() {

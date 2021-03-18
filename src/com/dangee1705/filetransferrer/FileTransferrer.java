@@ -53,8 +53,10 @@ public class FileTransferrer {
 			if(retval == JFileChooser.APPROVE_OPTION) {
 				File[] selectedFiles = fileChooser.getSelectedFiles();
 				for(File selectedFile : selectedFiles) {
-					defaultListModel.addElement(selectedFile);
-					server.addFile(selectedFile);
+					if(!defaultListModel.contains(selectedFile)) {
+						defaultListModel.addElement(selectedFile);
+						server.addFile(selectedFile);
+					}
 				}
 			}
 		});
@@ -116,6 +118,12 @@ public class FileTransferrer {
 		window.setLocationRelativeTo(null);
 		window.setVisible(true);
 
+		client.addOnConnectedToServerListener(() -> {
+			
+		});
+		client.addOnDisconnectedFromServerListener(() -> {
+			
+		});
 		server.addOnClientConnectListener(() -> {
 			client.connectTo(server.getClientHandlers().get(0).getSocket().getInetAddress());
 		});

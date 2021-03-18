@@ -15,6 +15,8 @@ public class Server implements Runnable {
 	private ServerSocket serverSocket;
 	private ArrayList<ItemWithRandomId<File>> fileWithRandomIds;
 	private ArrayList<ClientHandler> clientHandlers;
+	private ArrayList<Listener> onClientConnectedListeners = new ArrayList<>();
+	private ArrayList<Listener> onClientDisconnectedListeners = new ArrayList<>();
 
 	public Server() {
 		thread = new Thread(this, "Server");
@@ -80,6 +82,8 @@ public class Server implements Runnable {
 				}
 			}
 			cleanup();
+
+			onClientDisconnectedListeners.forEach(listener -> listener.on());
 		}
 
 		private void sendString(String string) throws IOException {
@@ -126,10 +130,12 @@ public class Server implements Runnable {
 		}
 	}
 
-	private ArrayList<Listener> onClientConnectedListeners = new ArrayList<>();
-
 	public void addOnClientConnectListener(Listener listener) {
 		onClientConnectedListeners.add(listener);
+	}
+
+	public void addOnClientDisconnectedListener(Listener listener) {
+		onClientDisconnectedListeners.add(listener);
 	}
 
 	public ArrayList<ClientHandler> getClientHandlers() {
@@ -154,7 +160,6 @@ public class Server implements Runnable {
 			try {
 				clientHandlers.add(new ClientHandler(serverSocket.accept()));
 				onClientConnectedListeners.forEach(listener -> listener.on());
-				System.out.println("got " + clientHandlers.size() + " connection(s)");
 			} catch(IOException e) {
 				e.printStackTrace();
 			}
