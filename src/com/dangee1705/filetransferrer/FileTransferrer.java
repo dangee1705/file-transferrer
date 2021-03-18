@@ -16,6 +16,7 @@ import javax.swing.JOptionPane;
 import javax.swing.JPanel;
 import javax.swing.JScrollPane;
 import javax.swing.ListSelectionModel;
+import javax.swing.SwingUtilities;
 
 // look for other servers on network
 // download file list
@@ -131,11 +132,13 @@ public class FileTransferrer {
 			client.connectTo(server.getClientHandlers().get(0).getSocket().getInetAddress());
 		});
 
-		client.addOnFileAddedListener(() -> {
+		client.addOnFileAddedListener(() -> SwingUtilities.invokeLater(() -> {
 			clientFileListModel.clear();
 			for(AvailableDownload download : client.getAvailableDownloads())
 				clientFileListModel.addElement(download);
-		});
+		}));
+
+		client.scanNetwork();
 	}
 
 	private long calculateSize(File root) {

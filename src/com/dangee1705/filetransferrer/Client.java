@@ -16,10 +16,6 @@ public class Client {
 	private ArrayList<ServerHandler> serverHandlers = new ArrayList<>();
 	private ArrayList<AvailableDownload> availableDownloads = new ArrayList<>();
 
-	public Client() {
-		scanNetwork();
-	}
-
 	public void connectTo(InetAddress inetAddress) {
 		synchronized(serverHandlers) {
 			for(ServerHandler serverHandler : serverHandlers)
@@ -114,8 +110,7 @@ public class Client {
 							}
 						}
 
-						for(Listener listener : onFileAddedListeners)
-							listener.on();
+						onFileAddedListeners.forEach(listener -> listener.on());
 					} else if(messageType == 2) {
 						long fileId = dataInputStream.readLong();
 						boolean isAvailable = dataInputStream.readBoolean();
