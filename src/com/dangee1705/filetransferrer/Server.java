@@ -21,7 +21,7 @@ public class Server implements Runnable {
 		thread.start();
 	}
 
-	private class ClientHandler implements Runnable {
+	public class ClientHandler implements Runnable {
 		private Socket socket;
 		private DataInputStream dataInputStream;
 		private DataOutputStream dataOutputStream;
@@ -120,6 +120,20 @@ public class Server implements Runnable {
 				}
 			}
 		}
+
+		public Socket getSocket() {
+			return socket;
+		}
+	}
+
+	private ArrayList<Listener> onClientConnectedListeners = new ArrayList<>();
+
+	public void addOnClientConnectListener(Listener listener) {
+		onClientConnectedListeners.add(listener);
+	}
+
+	public ArrayList<ClientHandler> getClientHandlers() {
+		return clientHandlers;
 	}
 
 	@Override
@@ -139,6 +153,7 @@ public class Server implements Runnable {
 		while(true) {
 			try {
 				clientHandlers.add(new ClientHandler(serverSocket.accept()));
+				onClientConnectedListeners.forEach(listener -> listener.on());
 				System.out.println("got " + clientHandlers.size() + " connection(s)");
 			} catch(IOException e) {
 				e.printStackTrace();

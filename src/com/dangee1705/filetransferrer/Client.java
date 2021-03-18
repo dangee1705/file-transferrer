@@ -20,6 +20,15 @@ public class Client {
 		scanNetwork();
 	}
 
+	public void connectTo(InetAddress inetAddress) {
+		synchronized(serverHandlers) {
+			for(ServerHandler serverHandler : serverHandlers)
+				if(serverHandler.getInetAddress().equals(inetAddress))
+					return;
+			serverHandlers.add(new ServerHandler(inetAddress));
+		}
+	}
+
 	public void scanNetwork() {
 		try {
 			Enumeration<NetworkInterface> enumeration = NetworkInterface.getNetworkInterfaces();
@@ -32,17 +41,7 @@ public class Client {
 							addr[addr.length - 1] = (byte) i;
 							InetAddress newInetAddress = InetAddress.getByAddress(addr);
 							if(!interfaceAddress.getAddress().equals(newInetAddress)) {
-								synchronized(serverHandlers) {
-									boolean exists = false;
-									for(ServerHandler serverHandler : serverHandlers) {
-										if(serverHandler.getInetAddress().equals(newInetAddress)) {
-											exists = true;
-											break;
-										}
-									}
-									if(!exists)
-										serverHandlers.add(new ServerHandler(newInetAddress));
-								}
+								connectTo(newInetAddress);
 							}
 						}
 					}

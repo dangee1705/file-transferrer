@@ -3,6 +3,8 @@ package com.dangee1705.filetransferrer;
 import java.awt.BorderLayout;
 import java.awt.GridLayout;
 import java.io.File;
+import java.net.InetAddress;
+import java.net.UnknownHostException;
 import java.util.ArrayList;
 
 import javax.swing.DefaultListModel;
@@ -27,6 +29,7 @@ import javax.swing.ListSelectionModel;
 
 public class FileTransferrer {
 	public static final int PORT = 10000;
+
 	private Server server;
 	private Client client;
 
@@ -94,7 +97,11 @@ public class FileTransferrer {
 		JButton manualConnectButton = new JButton("Manual Connect");
 		manualConnectButton.addActionListener(event -> {
 			String ip = (String) JOptionPane.showInputDialog(window, "Server IP", "192.168.0.0");
-			// TODO: connect
+			try {
+				client.connectTo(InetAddress.getByName(ip));
+			} catch (UnknownHostException e) {
+				
+			}
 		});
 		clientButtonsPanel.add(manualConnectButton);
 		clientPanel.add(clientButtonsPanel, BorderLayout.PAGE_START);
@@ -119,6 +126,10 @@ public class FileTransferrer {
 		window.setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE);
 		window.setLocationRelativeTo(null);
 		window.setVisible(true);
+
+		server.addOnClientConnectListener(() -> {
+			client.connectTo(server.getClientHandlers().get(0).getSocket().getInetAddress());
+		});
 
 		client.addOnFileAddedListener(() -> {
 			clientFileListModel.clear();
@@ -146,6 +157,14 @@ public class FileTransferrer {
 			bytes /= 1024;
 		}
 		return bytes + " " + suffixes[i] + "bytes";
+	}
+
+	public Server getServer() {
+		return server;
+	}
+
+	public Client getClient() {
+		return client;
 	}
 
 	public static void main(String[] args) {
