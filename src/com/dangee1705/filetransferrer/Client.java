@@ -36,9 +36,8 @@ public class Client {
 						for(int i = 0; i < 256; i++) {
 							addr[addr.length - 1] = (byte) i;
 							InetAddress newInetAddress = InetAddress.getByAddress(addr);
-							if(!interfaceAddress.getAddress().equals(newInetAddress)) {
+							if(!interfaceAddress.getAddress().equals(newInetAddress))
 								connectTo(newInetAddress);
-							}
 						}
 					}
 				}
@@ -91,11 +90,18 @@ public class Client {
 
 		@Override
 		public void run() {
+			Socket socket;
+
 			try {
-				Socket socket = new Socket(inetAddress, FileTransferrer.PORT);
+				socket = new Socket(inetAddress, FileTransferrer.PORT);
 				dataInputStream = new DataInputStream(socket.getInputStream());
 				dataOutputStream = new DataOutputStream(socket.getOutputStream());
+			} catch(IOException e) {
+				cleanup();
+				return;
+			}
 
+			try {
 				while(true) {
 					int messageType = dataInputStream.readInt();
 					if(messageType == 0) {
@@ -113,17 +119,23 @@ public class Client {
 						onFileAddedListeners.forEach(listener -> listener.on());
 					} else if(messageType == 2) {
 						long fileId = dataInputStream.readLong();
+						// TODO: verify this is the file they wanted
 						boolean isAvailable = dataInputStream.readBoolean();
 						if(isAvailable) {
 							readFile();
 						}
 					}
 				}
-
-				// socket.close();
-			} catch (Exception e) {
+			} catch(IOException e) {
 				
 			}
+
+			try {
+				socket.close();
+			} catch(IOException e) {
+				
+			}
+
 			cleanup();
 		}
 

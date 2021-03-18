@@ -5,7 +5,6 @@ import java.awt.GridLayout;
 import java.io.File;
 import java.net.InetAddress;
 import java.net.UnknownHostException;
-import java.util.ArrayList;
 
 import javax.swing.DefaultListModel;
 import javax.swing.JButton;
@@ -17,16 +16,6 @@ import javax.swing.JPanel;
 import javax.swing.JScrollPane;
 import javax.swing.ListSelectionModel;
 import javax.swing.SwingUtilities;
-
-// look for other servers on network
-// download file list
-// display file list
-
-// user can add files
-// send list to clients
-
-// select files to download
-// download files
 
 public class FileTransferrer {
 	public static final int PORT = 10000;
@@ -50,7 +39,6 @@ public class FileTransferrer {
 		wrapperPanel.add(serverPanel);
 
 		// server side
-		ArrayList<File> files = new ArrayList<>();
 		DefaultListModel<File> defaultListModel = new DefaultListModel<>();
 
 		JButton addFilesButton = new JButton("Add Files");
@@ -131,7 +119,6 @@ public class FileTransferrer {
 		server.addOnClientConnectListener(() -> {
 			client.connectTo(server.getClientHandlers().get(0).getSocket().getInetAddress());
 		});
-
 		client.addOnFileAddedListener(() -> SwingUtilities.invokeLater(() -> {
 			clientFileListModel.clear();
 			for(AvailableDownload download : client.getAvailableDownloads())
@@ -139,6 +126,16 @@ public class FileTransferrer {
 		}));
 
 		client.scanNetwork();
+
+		// JDialog progressDialog = new JDialog(window, "Downloading...", true);
+		// JProgressBar progressBar = new JProgressBar();
+		// progressBar.setIndeterminate(true);
+		// progressDialog.add(progressBar);
+		// progressDialog.pack();
+		// progressDialog.setResizable(false);
+		// progressDialog.setLocationRelativeTo(progressDialog);
+		// progressDialog.setDefaultCloseOperation(JDialog.DO_NOTHING_ON_CLOSE);
+		// progressDialog.setVisible(true);
 	}
 
 	private long calculateSize(File root) {
