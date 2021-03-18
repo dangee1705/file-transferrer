@@ -10,6 +10,7 @@ import javax.swing.JButton;
 import javax.swing.JFileChooser;
 import javax.swing.JFrame;
 import javax.swing.JList;
+import javax.swing.JOptionPane;
 import javax.swing.JPanel;
 import javax.swing.JScrollPane;
 import javax.swing.ListSelectionModel;
@@ -85,6 +86,18 @@ public class FileTransferrer {
 		// client side
 		JPanel clientPanel = new JPanel(new BorderLayout());
 		wrapperPanel.add(clientPanel);
+
+		JPanel clientButtonsPanel = new JPanel(new GridLayout(1, 2));
+		JButton rescanButton = new JButton("Rescan Network");
+		rescanButton.addActionListener(event -> client.scanNetwork());
+		clientButtonsPanel.add(rescanButton);
+		JButton manualConnectButton = new JButton("Manual Connect");
+		manualConnectButton.addActionListener(event -> {
+			String ip = (String) JOptionPane.showInputDialog(window, "Server IP", "192.168.0.0");
+			// TODO: connect
+		});
+		clientButtonsPanel.add(manualConnectButton);
+		clientPanel.add(clientButtonsPanel, BorderLayout.PAGE_START);
 
 		JScrollPane clientFileListScrollPane = new JScrollPane();
 		DefaultListModel<AvailableDownload> clientFileListModel = new DefaultListModel<>();

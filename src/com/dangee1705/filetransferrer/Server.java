@@ -36,7 +36,7 @@ public class Server implements Runnable {
 				return;
 			}
 
-			Thread thread = new Thread(this);
+			Thread thread = new Thread(this, "Client-Handler-" + socket.getInetAddress().getHostAddress());
 			thread.start();
 		}
 
@@ -46,6 +46,11 @@ public class Server implements Runnable {
 
 		@Override
 		public void run() {
+			try {
+				sendFileList();
+			} catch (IOException e1) {
+				
+			}
 			while(true) {
 				try {
 					int messageType = dataInputStream.readInt();
@@ -106,9 +111,10 @@ public class Server implements Runnable {
 				} else {
 					dataOutputStream.writeLong(file.length());
 					FileInputStream fileInputStream = new FileInputStream(file);
-					int b;
-					while((b = fileInputStream.read()) != -1) {
-						dataOutputStream.writeByte(b);
+					byte[] buffer = new byte[8192];
+					int count = 0;
+					while((count = fileInputStream.read(buffer, 0, 8192)) != -1) {
+						dataOutputStream.write(buffer, 0, count);
 					}
 					fileInputStream.close();
 				}
@@ -133,6 +139,7 @@ public class Server implements Runnable {
 		while(true) {
 			try {
 				clientHandlers.add(new ClientHandler(serverSocket.accept()));
+				System.out.println("got " + clientHandlers.size() + " connection(s)");
 			} catch(IOException e) {
 				e.printStackTrace();
 			}

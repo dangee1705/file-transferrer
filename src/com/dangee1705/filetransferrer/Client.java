@@ -6,7 +6,6 @@ import java.io.File;
 import java.io.FileOutputStream;
 import java.io.IOException;
 import java.net.InetAddress;
-import java.net.InetSocketAddress;
 import java.net.InterfaceAddress;
 import java.net.NetworkInterface;
 import java.net.Socket;
@@ -14,12 +13,14 @@ import java.util.ArrayList;
 import java.util.Enumeration;
 
 public class Client {
-	private ArrayList<ServerHandler> serverHandlers;
+	private ArrayList<ServerHandler> serverHandlers = new ArrayList<>();
 	private ArrayList<AvailableDownload> availableDownloads = new ArrayList<>();
 
 	public Client() {
-		serverHandlers = new ArrayList<>();
-		
+		scanNetwork();
+	}
+
+	public void scanNetwork() {
 		try {
 			Enumeration<NetworkInterface> enumeration = NetworkInterface.getNetworkInterfaces();
 			while(enumeration.hasMoreElements()) {
@@ -30,14 +31,23 @@ public class Client {
 						for(int i = 0; i < 256; i++) {
 							addr[addr.length - 1] = (byte) i;
 							InetAddress newInetAddress = InetAddress.getByAddress(addr);
-							synchronized(serverHandlers) {
-								serverHandlers.add(new ServerHandler(newInetAddress));
+							if(!interfaceAddress.getAddress().equals(newInetAddress)) {
+								synchronized(serverHandlers) {
+									boolean exists = false;
+									for(ServerHandler serverHandler : serverHandlers) {
+										if(serverHandler.getInetAddress().equals(newInetAddress)) {
+											exists = true;
+											break;
+										}
+									}
+									if(!exists)
+										serverHandlers.add(new ServerHandler(newInetAddress));
+								}
 							}
 						}
 					}
 				}
 			}
-			// serverHandlers.add(new ServerHandler(InetAddress.getByName("localhost"))); // TODO: remove this
 		} catch(Exception e) {
 			e.printStackTrace();
 		}
@@ -51,7 +61,7 @@ public class Client {
 
 		public ServerHandler(InetAddress inetAddress) {
 			this.inetAddress = inetAddress;
-			thread = new Thread(this, "Server-Handler-" + inetAddress);
+			thread = new Thread(this, "Server-Handler-" + inetAddress.getHostAddress());
 			thread.start();
 		}
 
@@ -73,8 +83,12 @@ public class Client {
 			} else {
 				long fileLength = dataInputStream.readLong();
 				FileOutputStream fileOutputStream = new FileOutputStream(file);
-				for(long i = 0; i < fileLength; i++) {
-					fileOutputStream.write(dataInputStream.readByte());
+				byte[] buffer = new byte[8192];
+				long count = 0;
+				while(count < fileLength) {
+					int last_count = dataInputStream.read(buffer, 0, (int) (fileLength - count < 8192 ? fileLength - count : 8192));
+					count += last_count;
+					fileOutputStream.write(buffer, 0, last_count);
 				}
 				fileOutputStream.close();
 			}
